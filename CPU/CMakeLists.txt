@@ -19,7 +19,7 @@ if (NOT "${CMAKE_C_COMPILER_ID}" STREQUAL "GNU")
             "module swap ${Prg-${CMAKE_C_COMPILER_ID}} PrgEnv-gnu")
 endif ()
 
-add_executable(naive main.cpp naive.cpp common.h)
+add_executable(blas main.cpp blas.cpp common.h)
 add_executable(sparse main.cpp sparse.cpp common.h)
 # we need another one for GPU
 

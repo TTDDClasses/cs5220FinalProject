@@ -8,18 +8,16 @@
 
 #include <cmath> // For: fabs
 
-// #include <cblas.h>
-
 #ifndef MAX_SPEED
 #define MAX_SPEED 56
 #endif
 
 /* Your function must have the following signature: */
-extern const char *dgemm_desc;
+extern const char *spgemm_desc;
 
-extern sparse_mat_t square_dgemm(const sparse_mat_t &, const sparse_mat_t &);
+extern sparse_mat_t spgemm(const sparse_mat_t &, const sparse_mat_t &);
 
-void reference_dgemm(int n, double alpha, double *A, double *B, double *C)
+void reference_spgemm(int n, double alpha, double *A, double *B, double *C)
 {
     //     cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, n, n, n, alpha, A, n, B, n, 1., C, n);
     for (int i = 0; i < n; ++i)
@@ -50,7 +48,7 @@ void fill(double *p, int n)
 /* The benchmarking program */
 int main(int argc, char **argv)
 {
-    std::cout << "Description:\t" << dgemm_desc << std::endl
+    std::cout << "Description:\t" << spgemm_desc << std::endl
               << std::endl;
 
     std::cout << std::fixed << std::setprecision(2);
@@ -110,16 +108,16 @@ int main(int argc, char **argv)
 
     sparse_mat_t s1 = convert_to_sparse(2, 3, mat1);
     sparse_mat_t s2 = convert_to_sparse(3, 2, mat2);
-    sparse_mat_t result = square_dgemm(s1, s2);
+    sparse_mat_t result = spgemm(s1, s2);
 
-    // printf("s1 \n");
-    // print_sparse_matrix(s1);
+    printf("s1 \n");
+    print_sparse_matrix(s1);
 
-    // printf("s2 \n");
-    // print_sparse_matrix(s2);
+    printf("s2 \n");
+    print_sparse_matrix(s2);
 
-    // printf("result \n");
-    // print_sparse_matrix(result);
+    printf("result \n");
+    print_sparse_matrix(result);
 
     return 0;
 }
