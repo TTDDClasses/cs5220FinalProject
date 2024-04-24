@@ -7,6 +7,7 @@
 #include <thrust/scan.h>
 #include <thrust/execution_policy.h>
 
+const char *spgemm_desc = "GPU SpGEMM";
 const int BLOCK_SIZE = 256;
 
 __global__ void count_non_zeros_per_row_kernel(int *A_row_ptrs, int *A_col_indices, int *B_row_ptrs, int *B_col_indices, int A_rows, int *C_row_count) {
@@ -26,7 +27,6 @@ __global__ void count_non_zeros_per_row_kernel(int *A_row_ptrs, int *A_col_indic
 __global__ void spgemm_kernel(int *A_row_ptrs, int *A_col_indices, double *A_values, int *B_row_ptrs, int *B_col_indices, double *B_values, int *C_row_ptrs, int *C_col_indices, double *C_values, int A_rows, int B_cols) {
     int row = blockIdx.x * blockDim.x + threadIdx.x;
     if (row < A_rows) {
-        int c_index = C_row_ptrs[row];
         int startA = A_row_ptrs[row];
         int endA = A_row_ptrs[row + 1];
 
@@ -39,7 +39,7 @@ __global__ void spgemm_kernel(int *A_row_ptrs, int *A_col_indices, double *A_val
             for (int j = startB; j < endB; ++j) {
                 int colB = B_col_indices[j];
                 double valB = B_values[j];
-                int index = atomicAdd(&c_index, 1);
+                int index = atomicAdd(&C_row_ptrs[row], 1);
                 C_col_indices[index] = colB;
                 C_values[index] = valA * valB;
             }
@@ -78,35 +78,29 @@ void spgemm(const sparse_mat_t &A, const sparse_mat_t &B, sparse_mat_t &C) {
         thrust::raw_pointer_cast(d_C_row_count.data())
     );
 
+    printf("Checking the nonzeros \n");
+
     thrust::exclusive_scan(thrust::device, d_C_row_count.begin(), d_C_row_count.end(), d_C_row_ptrs.begin());
 
     int total_non_zeros = d_C_row_ptrs[A.rows];
     thrust::device_vector<int> d_C_col_indices(total_non_zeros);
     thrust::device_vector<double> d_C_values(total_non_zeros);
 
-    spgemm_kernel<<<numBlocks, BLOCK_SIZE>>>(
-        thrust::raw_pointer_cast(d_A_row_ptrs.data()),
-        thrust::raw_pointer_cast(d_A_col_indices.data()),
-        thrust::raw_pointer_cast(d_A_values.data()),
-        thrust::raw_pointer_cast(d_B_row_ptrs.data()),
-        thrust::raw_pointer_cast(d_B_col_indices.data()),
-        thrust::raw_pointer_cast(d_B_values.data()),
-        thrust::raw_pointer_cast(d_C_row_ptrs.data()),
-        thrust::raw_pointer_cast(d_C_col_indices.data()),
-        thrust::raw_pointer_cast(d_C_values.data()),
-        A.rows,
-        B.cols
-    );
+    // spgemm_kernel<<<numBlocks, BLOCK_SIZE>>>(
+    //     thrust::raw_pointer_cast(d_A_row_ptrs.data()),
+    //     thrust::raw_pointer_cast(d_A_col_indices.data()),
+    //     thrust::raw_pointer_cast(d_A_values.data()),
+    //     thrust::raw_pointer_cast(d_B_row_ptrs.data()),
+    //     thrust::raw_pointer_cast(d_B_col_indices.data()),
+    //     thrust::raw_pointer_cast(d_B_values.data()),
+    //     thrust::raw_pointer_cast(d_C_row_ptrs.data()),
+    //     thrust::raw_pointer_cast(d_C_col_indices.data()),
+    //     thrust::raw_pointer_cast(d_C_values.data()),
+    //     A.rows,
+    //     B.cols
+    // );
 
-    thrust::copy(d_C_values.begin(), d_C_values.end(), C.values.begin());
-    thrust::copy(d_C_col_indices.begin(), d_C_col_indices.end(), C.col_indices.begin());
-    thrust::copy(d_C_row_ptrs.begin(), d_C_row_ptrs.end(), C.row_ptrs.begin());
-}
-
-int main() {
-    sparse_mat_t A, B, C;
-
-    spgemm(A, B, C);
-
-    return 0;
+    // thrust::copy(d_C_values.begin(), d_C_values.end(), C.values.begin());
+    // thrust::copy(d_C_col_indices.begin(), d_C_col_indices.end(), C.col_indices.begin());
+    // thrust::copy(d_C_row_ptrs.begin(), d_C_row_ptrs.end(), C.row_ptrs.begin());
 }
