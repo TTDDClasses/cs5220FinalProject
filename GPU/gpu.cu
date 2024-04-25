@@ -10,6 +10,10 @@
 const char *spgemm_desc = "GPU SpGEMM";
 const int BLOCK_SIZE = 256;
 
+/*
+* Executed in parallel for each Row of A.
+* Each thread computes the number of non-zeros in a single row of A.
+*/
 __global__ void count_non_zeros_per_row_kernel(int *A_row_ptrs, int *A_col_indices, int *B_row_ptrs, int *B_col_indices, int A_rows, int *C_row_count) {
     int row = blockIdx.x * blockDim.x + threadIdx.x;
     if (row < A_rows) {
@@ -23,7 +27,11 @@ __global__ void count_non_zeros_per_row_kernel(int *A_row_ptrs, int *A_col_indic
         C_row_count[row] = count;
     }
 }
-
+/*
+* Each thread processes one row of matrix A.
+* Computes the product of corresponding elements with rows of B.
+* Updates C's matrix values and column indices.
+*/
 __global__ void spgemm_kernel(int *A_row_ptrs, int *A_col_indices, double *A_values, int *B_row_ptrs, int *B_col_indices, double *B_values, int *C_row_ptrs, int *C_col_indices, double *C_values, int A_rows, int B_cols) {
     int row = blockIdx.x * blockDim.x + threadIdx.x;
     if (row < A_rows) {
