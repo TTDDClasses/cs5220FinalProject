@@ -47,9 +47,11 @@ __global__ void spgemm_kernel(int *A_row_ptrs, int *A_col_indices, double *A_val
             for (int j = startB; j < endB; ++j) {
                 int colB = B_col_indices[j];
                 double valB = B_values[j];
-                int index = atomicAdd(&C_row_ptrs[row], 1);
+                int index = atomicAdd(&C_row_ptrs[row], 1); // Why atomic add?
                 C_col_indices[index] = colB;
-                C_values[index] = valA * valB;
+                // C_values[index] += valA * valB;
+                printf("%f*%f=%f\n", valA, valB, valA*valB);
+                atomicAdd(&C_values[index], valA * valB);
             }
         }
     }
@@ -96,13 +98,13 @@ void spgemm(const sparse_mat_t &A, const sparse_mat_t &B, sparse_mat_t &C) {
 
     thrust::inclusive_scan(thrust::device, d_C_row_count.begin(), d_C_row_count.end()+1, d_C_row_ptrs.begin());
 
-    print_device_vector(d_C_row_count);
-    print_device_vector(d_C_row_ptrs);
+    // print_device_vector(d_C_row_count);
+    // print_device_vector(d_C_row_ptrs);
 
     thrust::host_vector<int> C_row_ptrs_copy(A.rows+1);
     thrust::copy(d_C_row_ptrs.begin(), d_C_row_ptrs.end(), C_row_ptrs_copy.begin());
     int total_non_zeros = C_row_ptrs_copy[A.rows];
-    printf("%d\n", total_non_zeros);
+    // printf("%d\n", total_non_zeros);
     thrust::device_vector<int> d_C_col_indices(total_non_zeros);
     thrust::device_vector<double> d_C_values(total_non_zeros);
 

@@ -80,7 +80,7 @@ int main(int argc, char **argv)
 
     double mat1[] = {1.0};
     double mat2[] = {1.0};
-    double C[] = {1.0};
+    double C[] = {0.0};
 
     sparse_mat_t s1 = convert_to_sparse(1, 1, mat1);
     sparse_mat_t s2 = convert_to_sparse(1, 1, mat2);
