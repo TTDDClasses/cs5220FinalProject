@@ -3,6 +3,8 @@ project(hw3)
 enable_language(CUDA)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED YES)
+set(THRUST_IGNORE_DEPRECATED_CPP_DIALECT 1)
+set(CUB_IGNORE_DEPRECATED_CPP_DIALECT 1)
 
 # We require the GNU compiler for this assignment.
 if (NOT "${CMAKE_C_COMPILER_ID}" STREQUAL "GNU")
