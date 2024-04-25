@@ -56,6 +56,12 @@ __global__ void spgemm_kernel(int *A_row_ptrs, int *A_col_indices, double *A_val
 }
 
 
+void print_device_vector(thrust::device_vector<int> vec) {
+    thrust::copy(vec.begin(), vec.end(), std::ostream_iterator<float>(std::cout, " "));
+    printf("\n");
+}
+
+
 /*
  * This routine performs a dgemm operation
  * C := A * B
@@ -86,29 +92,35 @@ void spgemm(const sparse_mat_t &A, const sparse_mat_t &B, sparse_mat_t &C) {
         thrust::raw_pointer_cast(d_C_row_count.data())
     );
 
-    printf("Checking the nonzeros \n");
+    // printf("Checking the nonzeros \n");
 
-    thrust::exclusive_scan(thrust::device, d_C_row_count.begin(), d_C_row_count.end(), d_C_row_ptrs.begin());
+    thrust::inclusive_scan(thrust::device, d_C_row_count.begin(), d_C_row_count.end()+1, d_C_row_ptrs.begin());
 
-    int total_non_zeros = d_C_row_ptrs[A.rows];
+    print_device_vector(d_C_row_count);
+    print_device_vector(d_C_row_ptrs);
+
+    thrust::host_vector<int> C_row_ptrs_copy(A.rows+1);
+    thrust::copy(d_C_row_ptrs.begin(), d_C_row_ptrs.end(), C_row_ptrs_copy.begin());
+    int total_non_zeros = C_row_ptrs_copy[A.rows];
+    printf("%d\n", total_non_zeros);
     thrust::device_vector<int> d_C_col_indices(total_non_zeros);
     thrust::device_vector<double> d_C_values(total_non_zeros);
 
-    // spgemm_kernel<<<numBlocks, BLOCK_SIZE>>>(
-    //     thrust::raw_pointer_cast(d_A_row_ptrs.data()),
-    //     thrust::raw_pointer_cast(d_A_col_indices.data()),
-    //     thrust::raw_pointer_cast(d_A_values.data()),
-    //     thrust::raw_pointer_cast(d_B_row_ptrs.data()),
-    //     thrust::raw_pointer_cast(d_B_col_indices.data()),
-    //     thrust::raw_pointer_cast(d_B_values.data()),
-    //     thrust::raw_pointer_cast(d_C_row_ptrs.data()),
-    //     thrust::raw_pointer_cast(d_C_col_indices.data()),
-    //     thrust::raw_pointer_cast(d_C_values.data()),
-    //     A.rows,
-    //     B.cols
-    // );
+    spgemm_kernel<<<numBlocks, BLOCK_SIZE>>>(
+        thrust::raw_pointer_cast(d_A_row_ptrs.data()),
+        thrust::raw_pointer_cast(d_A_col_indices.data()),
+        thrust::raw_pointer_cast(d_A_values.data()),
+        thrust::raw_pointer_cast(d_B_row_ptrs.data()),
+        thrust::raw_pointer_cast(d_B_col_indices.data()),
+        thrust::raw_pointer_cast(d_B_values.data()),
+        thrust::raw_pointer_cast(d_C_row_ptrs.data()),
+        thrust::raw_pointer_cast(d_C_col_indices.data()),
+        thrust::raw_pointer_cast(d_C_values.data()),
+        A.rows,
+        B.cols
+    );
 
-    // thrust::copy(d_C_values.begin(), d_C_values.end(), C.values.begin());
-    // thrust::copy(d_C_col_indices.begin(), d_C_col_indices.end(), C.col_indices.begin());
-    // thrust::copy(d_C_row_ptrs.begin(), d_C_row_ptrs.end(), C.row_ptrs.begin());
+    thrust::copy(d_C_values.begin(), d_C_values.end(), C.values.begin());
+    thrust::copy(d_C_col_indices.begin(), d_C_col_indices.end(), C.col_indices.begin());
+    thrust::copy(d_C_row_ptrs.begin(), d_C_row_ptrs.end(), C.row_ptrs.begin());
 }

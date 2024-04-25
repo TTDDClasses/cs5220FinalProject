@@ -78,19 +78,27 @@ int main(int argc, char **argv)
     // printf("result \n");
     // print_sparse_matrix(result);
 
-    double mat1[] = {3.0, 4.0, 2.0, 1.0};
-    double mat2[] = {5.0, 2.0, 3.0, 3.0};
-    double C[] = {0.0, 0.0, 0.0, 0.0};
+    double mat1[] = {1.0};
+    double mat2[] = {1.0};
+    double C[] = {1.0};
 
-    sparse_mat_t s1 = convert_to_sparse(2, 2, mat1);
-    sparse_mat_t s2 = convert_to_sparse(2, 2, mat2);
-    sparse_mat_t result = convert_to_sparse(2, 2, C);
+    sparse_mat_t s1 = convert_to_sparse(1, 1, mat1);
+    sparse_mat_t s2 = convert_to_sparse(1, 1, mat2);
+    sparse_mat_t result = convert_to_sparse(1, 1, C);
 
-    print_sparse_matrix(s1);
-    print_sparse_matrix(s2);
-    print_sparse_matrix(result);
+    // std::cout << "Before" << std::endl;
+    // print_sparse_matrix(s1);
+    // print_sparse_matrix(s2);
+    // print_sparse_matrix(result);
 
     spgemm(s1, s2, result);
+    reference_spgemm(1, 0.0, mat1, mat2, C);
+
+    std::cout << "Expected" << std::endl;
+    print_sparse_matrix(convert_to_sparse(1,1,C));
+    std::cout << std::endl;
+    std::cout << "Actual" << std::endl;
+    print_sparse_matrix(result);
 
     // double * result_mat = convert_from_sparse(result);
     // printDoubleArray(result_mat, 4);
