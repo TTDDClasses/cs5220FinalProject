@@ -89,10 +89,10 @@ void init_spgemm(const sparse_mat_t &A, const sparse_mat_t &B)
     cudaMalloc(&d_B_col_indices, sizeof(int) * (B.values.size()));
     cudaMemcpy(d_B_col_indices, B.col_indices.data(), sizeof(int) * (B.values.size()), cudaMemcpyHostToDevice);
 
-    cudaMalloc(&d_A_values, sizeof(int) * (A.values.size()));
-    cudaMemcpy(d_A_values, A.values.data(), sizeof(int) * (A.values.size()), cudaMemcpyHostToDevice);
-    cudaMalloc(&d_B_values, sizeof(int) * (B.values.size()));
-    cudaMemcpy(d_B_values, B.values.data(), sizeof(int) * (B.values.size()), cudaMemcpyHostToDevice);
+    cudaMalloc(&d_A_values, sizeof(double) * (A.values.size()));
+    cudaMemcpy(d_A_values, A.values.data(), sizeof(double) * (A.values.size()), cudaMemcpyHostToDevice);
+    cudaMalloc(&d_B_values, sizeof(double) * (B.values.size()));
+    cudaMemcpy(d_B_values, B.values.data(), sizeof(double) * (B.values.size()), cudaMemcpyHostToDevice);
 
     printf("The number of blocks %d \n", blks);
 }
