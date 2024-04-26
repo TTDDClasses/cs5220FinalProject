@@ -1,12 +1,14 @@
 cmake_minimum_required(VERSION 3.11)
-project(hw3)
+project(final_project_gpu)
 enable_language(CUDA)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED YES)
 add_compile_definitions(CUB_IGNORE_DEPRECATED_CPP_DIALECT=1)
 add_compile_definitions(THRUST_IGNORE_DEPRECATED_CPP_DIALECT=1)
 
-find_package(BLAS REQUIRED)
+option(ALL_SIZES "Test an extended set of sizes; will take more CPU time." OFF)
+
+message(STATUS "Value of ALL_SIZES: ${ALL_SIZES}")
 
 # We require the GNU compiler for this assignment.
 if (NOT "${CMAKE_C_COMPILER_ID}" STREQUAL "GNU")

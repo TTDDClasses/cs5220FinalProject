@@ -6,11 +6,15 @@
 #include <random>
 #include <vector>
 
-#include <cmath>       // For: fabs
-#include "cublas_v2.h" // Include cuBLAS header
+#include <cmath> // For: fabs
+// #include "cublas_v2.h" // Include cuBLAS header
 
 #ifndef MAX_SPEED
 #define MAX_SPEED 56
+#endif
+
+#ifndef ALL_SIZES
+#define ALL_SIZES 0
 #endif
 
 /* Your function must have the following signature: */
@@ -18,18 +22,24 @@ extern const char *spgemm_desc;
 extern sparse_mat_t spgemm(const sparse_mat_t &, const sparse_mat_t &);
 
 /* Define cublas handle */
-cublasHandle_t handle;
+// cublasHandle_t handle;
 
 void reference_dgemm(int n, double alpha, double *A, double *B, double *C)
 {
-    // Note that we need to change to row major order
-    // cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, n, n, n, alpha, A, n, B, n, 1., C, n);
-    int lda = n;
-    int ldb = n;
-    int ldc = n;
-
-    /* Perform matrix multiplication using cuBLAS */
-    cublasDgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N, n, n, n, &alpha, A, lda, B, ldb, 1.0, C, ldc);
+    for (int i = 0; i < n; ++i)
+    {
+        // For each column j of B
+        for (int j = 0; j < n; ++j)
+        {
+            // Compute C(i,j)
+            double cij = C[i * n + j];
+            for (int k = 0; k < n; k++)
+            {
+                cij += alpha * A[i * n + k] * B[k * n + j];
+            }
+            C[i * n + j] = cij;
+        }
+    }
 }
 
 void fill(double *p, int n)
@@ -45,7 +55,7 @@ void fill(double *p, int n)
 int main(int argc, char **argv)
 {
     /* Initialize cublas */
-    cublasCreate(&handle);
+    // cublasCreate(&handle);
 
     std::cout << "Description:\t" << spgemm_desc << std::endl
               << std::endl;
@@ -93,7 +103,6 @@ int main(int argc, char **argv)
         sparse_mat_t sparseA = convert_to_sparse(n, n, A);
         sparse_mat_t sparseB = convert_to_sparse(n, n, B);
         sparse_mat_t result;
-        double *spResult;
 
         /* Measure performance (in Gflops/s). */
         /* Time a "sufficiently long" sequence of calls to reduce noise */
@@ -131,10 +140,10 @@ int main(int argc, char **argv)
         /* Ensure that error does not exceed the theoretical error bound. */
 
         /* C := A * B, computed with square_dgemm */
-        // std::fill(C, &C[n * n], 0.0);
         // spgemm(n, A, B, C);
         result = spgemm(sparseA, sparseB);
         double *tempC = convert_from_sparse(result);
+        // We store the calculated C into C here
         std::copy(tempC, tempC + n * n, C);
 
         /* Do not explicitly check that A and B were unmodified on square_dgemm exit
@@ -143,9 +152,12 @@ int main(int argc, char **argv)
         reference_dgemm(n, -1., A, B, C);
 
         /* A := |A|, B := |B|, C := |C| */
-        std::transform(A, &A[n * n], A, fabs);
-        std::transform(B, &B[n * n], B, fabs);
-        std::transform(C, &C[n * n], C, fabs);
+        std::transform(A, A + n * n, A, [](double val)
+                       { return std::fabs(val); });
+        std::transform(B, B + n * n, B, [](double val)
+                       { return std::fabs(val); });
+        std::transform(C, C + n * n, C, [](double val)
+                       { return std::fabs(val); });
 
         /* C := |C| - 3 * e_mach * n * |A| * |B|, computed with reference_dgemm */
         const auto e_mach = std::numeric_limits<double>::epsilon();
@@ -175,7 +187,7 @@ int main(int argc, char **argv)
     /* Printing average percentage to screen */
     std::cout << "Average percentage of Peak = " << aveper << std::endl;
 
-    cublasDestroy(handle);
+    // cublasDestroy(handle);
 
     return 0;
     // ------------------------------------SPARSE MATRIX MULTIPLICATION-----------------------

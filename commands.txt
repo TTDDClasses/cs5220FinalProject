@@ -1,0 +1,3 @@
+-----------------Allocate------------------
+salloc -N 1 -q interactive -t 01:00:00 --constraint cpu --account=m4341
+salloc --nodes 1 --qos interactive --time 01:00:00 --constraint gpu --gpus 1 --account=m4341

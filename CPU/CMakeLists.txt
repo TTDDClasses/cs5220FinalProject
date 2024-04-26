@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.14)
-project(final_project)
+project(final_project_cpu)
 
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED YES)

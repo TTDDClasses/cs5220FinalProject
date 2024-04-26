@@ -4,7 +4,7 @@
 #include <thrust/scan.h>
 #include <thrust/device_vector.h>
 
-#define NUM_THREADS 8
+#define NUM_THREADS 128
 
 const char *spgemm_desc = "GPU SpGEMM";
 
@@ -34,11 +34,7 @@ __global__ void spgemm_kernel(int *d_A_row_ptrs, int *d_A_col_indices, double *d
     int row = tid / rows_A;
     int col = tid % cols_B;
 
-    printf("This is the thread id %d, its row is %d, its col is %d \n", tid, row, col);
-
     double dot_prod = 0.0;
-
-    printf("BEFORE THE FOR LOOP for thread %d, the row pointer is %d\n", tid, d_A_row_ptrs[row]);
 
     for (int k = d_A_row_ptrs[row]; k < d_A_row_ptrs[row + 1]; ++k)
     {
@@ -51,22 +47,13 @@ __global__ void spgemm_kernel(int *d_A_row_ptrs, int *d_A_col_indices, double *d
             {
                 double B_val = d_B_values[l];
                 dot_prod += A_val * B_val;
-                printf("HELL) THE value should be here %f * %f = %f\n", A_val, B_val, A_val * B_val);
                 break;
             }
         }
     }
 
-    printf("For thread id %d, the dot product is %f\n", tid, dot_prod);
-
     // We will store the value directly into the result array
     d_result[tid] = dot_prod;
-    // if (dot_prod != 0.0)
-    // {
-    //     int index = atomicAdd(&result_row_ptrs[row + 1], 1);
-    //     result_values[index] = dot_prod;
-    //     result_col_indices[index] = col;
-    // }
 }
 
 // -----------------------------------HOST FUNCTIONS--------------------------
@@ -93,8 +80,17 @@ void init_spgemm(const sparse_mat_t &A, const sparse_mat_t &B)
     cudaMemcpy(d_A_values, A.values.data(), sizeof(double) * (A.values.size()), cudaMemcpyHostToDevice);
     cudaMalloc(&d_B_values, sizeof(double) * (B.values.size()));
     cudaMemcpy(d_B_values, B.values.data(), sizeof(double) * (B.values.size()), cudaMemcpyHostToDevice);
+}
 
-    printf("The number of blocks %d \n", blks);
+void cleanup_spgemm()
+{
+    cudaFree(d_result);
+    cudaFree(d_A_row_ptrs);
+    cudaFree(d_B_row_ptrs);
+    cudaFree(d_A_col_indices);
+    cudaFree(d_B_col_indices);
+    cudaFree(d_A_values);
+    cudaFree(d_B_values);
 }
 
 /*
@@ -111,20 +107,13 @@ sparse_mat_t spgemm(const sparse_mat_t &A, const sparse_mat_t &B)
     thrust::device_ptr<double> d_result_ptr(d_result);
     thrust::fill(d_result_ptr, d_result_ptr + num_entries, 0);
 
-    printf("BEFORE THE KERNEL\n");
-
     double *cpu_A_vals = new double[A.values.size()];
     cudaMemcpy(cpu_A_vals, d_A_values, sizeof(double) * A.values.size(), cudaMemcpyDeviceToHost);
-    printf("printing A VALUES \n");
-    printDoubleArray(A.values.data(), A.values.size());
-    printDoubleArray(cpu_A_vals, A.values.size());
 
     // Parallelize the matrix multiplication across all the threads
     spgemm_kernel<<<blks, NUM_THREADS>>>(d_A_row_ptrs, d_A_col_indices, d_A_values,
                                          d_B_row_ptrs, d_B_col_indices, d_B_values,
                                          d_result, A.rows, B.cols);
-
-    printf("AFTER THE KERNEL\n");
 
     // Copy the device result to host
     // Return a sparse mat representation from there
@@ -132,9 +121,9 @@ sparse_mat_t spgemm(const sparse_mat_t &A, const sparse_mat_t &B)
     double *result_cpu = new double[num_entries];
 
     cudaMemcpy(result_cpu, d_result, sizeof(double) * num_entries, cudaMemcpyDeviceToHost);
-
-    printDoubleArray(result_cpu, num_entries);
-
     sparse_mat_t sparse_result = convert_to_sparse(A.rows, B.cols, result_cpu);
+
+    cleanup_spgemm();
+
     return sparse_result;
 }
