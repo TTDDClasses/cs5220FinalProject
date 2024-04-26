@@ -3,10 +3,6 @@ project(hw3)
 enable_language(CUDA)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED YES)
-add_compile_definitions(CUB_IGNORE_DEPRECATED_CPP_DIALECT=1)
-add_compile_definitions(THRUST_IGNORE_DEPRECATED_CPP_DIALECT=1)
-
-find_package(BLAS REQUIRED)
 
 # We require the GNU compiler for this assignment.
 if (NOT "${CMAKE_C_COMPILER_ID}" STREQUAL "GNU")
