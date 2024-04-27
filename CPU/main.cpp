@@ -10,6 +10,10 @@
 
 #include <cblas.h>
 
+#ifndef ALL_SIZES
+#define ALL_SIZES 0
+#endif
+
 #ifndef MAX_SPEED
 #define MAX_SPEED 56
 #endif
