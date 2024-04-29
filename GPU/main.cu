@@ -48,7 +48,7 @@ void fill(double *p, int n, double sparsity)
     static std::default_random_engine gen(rd());
     static std::uniform_real_distribution<> dis(-1.0, 1.0);
 
-    int nonZeroCount = static_cast<int>(n * sparsity);
+    int nonZeroCount = static_cast<int>((n * (1 - sparsity)));
 
     // Fill everything with 0
     std::fill(p, p + n, 0);
@@ -83,15 +83,10 @@ int main(int argc, char **argv)
 #ifdef ALL_SIZES
     /* Multiples-of-32, +/- 1. */
     std::vector<int> test_sizes{
-        31, 32, 33, 63, 64, 65, 95, 96, 97, 127, 128, 129, 159, 160, 161, 191,
-        192, 193, 223, 224, 225, 255, 256, 257, 287, 288, 289, 319, 320, 321, 351, 352,
-        353, 383, 384, 385, 415, 416, 417, 447, 448, 449, 479, 480, 481, 511, 512, 513,
-        543, 544, 545, 575, 576, 577, 607, 608, 609, 639, 640, 641, 671, 672, 673, 703,
-        704, 705, 735, 736, 737, 767, 768, 769, 799, 800, 801, 831, 832, 833, 863, 864,
-        865, 895, 896, 897, 927, 928, 929, 959, 960, 961, 991, 992, 993, 1023, 1024, 1025};
+        100, 500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 5500, 6000, 6500, 7000, 7500, 8000, 8500, 9000, 9500, 10000};
 #else
     /* A representative subset of the first list. */
-    std::vector<int> test_sizes{2, 4, 8, 12, 16};
+    std::vector<int> test_sizes{100, 500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 5500, 6000, 6500, 7000, 7500, 8000, 8500, 9000, 9500, 10000};
 #endif
 
     std::sort(test_sizes.begin(), test_sizes.end());
