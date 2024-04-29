@@ -42,13 +42,29 @@ void reference_dgemm(int n, double alpha, double *A, double *B, double *C)
     }
 }
 
-void fill(double *p, int n)
+void fill(double *p, int n, double sparsity)
 {
     static std::random_device rd;
     static std::default_random_engine gen(rd());
     static std::uniform_real_distribution<> dis(-1.0, 1.0);
-    for (int i = 0; i < n; ++i)
-        p[i] = 2 * dis(gen) - 1;
+
+    int nonZeroCount = static_cast<int>(n * sparsity);
+
+    // Fill everything with 0
+    std::fill(p, p + n, 0);
+
+    for (int i = 0; i < nonZeroCount; ++i)
+    {
+        int index;
+        do
+        {
+            index = std::uniform_int_distribution<>(0, n - 1)(gen);
+        } while (p[index] != 0.0); // Make sure we're not overwriting existing non-zero value
+        p[index] = 2 * dis(gen) - 1;
+    }
+
+    // for (int i = 0; i < n; ++i)
+    //     p[i] = 2 * dis(gen) - 1;
 }
 
 /* The benchmarking program */
@@ -96,9 +112,9 @@ int main(int argc, char **argv)
         double *B = A + nmax * nmax;
         double *C = B + nmax * nmax;
 
-        fill(A, n * n);
-        fill(B, n * n);
-        fill(C, n * n);
+        fill(A, n * n, 0.5);
+        fill(B, n * n, 0.5);
+        // fill(C, n * n);
 
         sparse_mat_t sparseA = convert_to_sparse(n, n, A);
         sparse_mat_t sparseB = convert_to_sparse(n, n, B);

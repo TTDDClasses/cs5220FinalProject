@@ -10,9 +10,9 @@
 
 #include <cblas.h>
 
-#ifndef ALL_SIZES
-#define ALL_SIZES 0
-#endif
+// #ifndef ALL_SIZES
+// #define ALL_SIZES 0
+// #endif
 
 #ifndef MAX_SPEED
 #define MAX_SPEED 56
@@ -28,13 +28,29 @@ void reference_dgemm(int n, double alpha, double *A, double *B, double *C)
     cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, n, n, n, alpha, A, n, B, n, 1., C, n);
 }
 
-void fill(double *p, int n)
+void fill(double *p, int n, double sparsity)
 {
     static std::random_device rd;
     static std::default_random_engine gen(rd());
     static std::uniform_real_distribution<> dis(-1.0, 1.0);
-    for (int i = 0; i < n; ++i)
-        p[i] = 2 * dis(gen) - 1;
+
+    int nonZeroCount = static_cast<int>(n * sparsity);
+
+    // Fill everything with 0
+    std::fill(p, p + n, 0);
+
+    for (int i = 0; i < nonZeroCount; ++i)
+    {
+        int index;
+        do
+        {
+            index = std::uniform_int_distribution<>(0, n - 1)(gen);
+        } while (p[index] != 0.0); // Make sure we're not overwriting existing non-zero value
+        p[index] = 2 * dis(gen) - 1;
+    }
+
+    // for (int i = 0; i < n; ++i)
+    //     p[i] = 2 * dis(gen) - 1;
 }
 
 /* The benchmarking program */
@@ -58,7 +74,8 @@ int main(int argc, char **argv)
         865, 895, 896, 897, 927, 928, 929, 959, 960, 961, 991, 992, 993, 1023, 1024, 1025};
 #else
     /* A representative subset of the first list. */
-    std::vector<int> test_sizes{2, 4, 8, 12, 16};
+    // std::vector<int> test_sizes{2, 4, 8, 12, 16};
+    std::vector<int> test_sizes{2};
 #endif
 
     std::sort(test_sizes.begin(), test_sizes.end());
@@ -79,14 +96,22 @@ int main(int argc, char **argv)
         double *B = A + nmax * nmax;
         double *C = B + nmax * nmax;
 
-        fill(A, n * n);
-        fill(B, n * n);
-        fill(C, n * n);
+        fill(A, n * n, 0.5);
+        fill(B, n * n, 0.5);
+        // fill(C, n * n);
 
         sparse_mat_t sparseA = convert_to_sparse(n, n, A);
         sparse_mat_t sparseB = convert_to_sparse(n, n, B);
         sparse_mat_t result;
         double *spResult;
+
+        // printf("printing arrays\n");
+        // printDoubleArray(A, n * n);
+        // printDoubleArray(B, n * n);
+
+        // printf("printing sparse mat\n");
+        // print_sparse_matrix(sparseA);
+        // print_sparse_matrix(sparseB);
 
         /* Measure performance (in Gflops/s). */
         /* Time a "sufficiently long" sequence of calls to reduce noise */
