@@ -4,7 +4,7 @@
 #include <thrust/scan.h>
 #include <thrust/device_vector.h>
 
-#define NUM_THREADS 1
+#define NUM_THREADS 1024
 
 const char *spgemm_desc = "GPU CSR-CSR SpGEMM";
 
@@ -121,7 +121,6 @@ sparse_CSR_t spgemm(const sparse_CSR_t &A, const sparse_CSR_t &B)
     double *result_cpu = new double[num_entries];
 
     cudaMemcpy(result_cpu, d_result, sizeof(double) * num_entries, cudaMemcpyDeviceToHost);
-
     sparse_CSR_t sparse_result = convert_to_sparse_CSR(A.rows, B.cols, result_cpu);
 
     cleanup_spgemm();

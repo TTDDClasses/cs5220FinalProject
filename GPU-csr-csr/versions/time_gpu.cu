@@ -1,12 +1,27 @@
 #include "../common.h"
 #include <cuda.h>
 #include <iostream>
+#include <sys/time.h>
 #include <thrust/scan.h>
 #include <thrust/device_vector.h>
 
-#define NUM_THREADS 1
+#define NUM_THREADS 1024
 
 const char *spgemm_desc = "GPU CSR-CSR SpGEMM";
+
+double read_timer()
+{
+    static bool initialized = false;
+    static struct timeval start;
+    struct timeval end;
+    if (!initialized)
+    {
+        gettimeofday(&start, NULL);
+        initialized = true;
+    }
+    gettimeofday(&end, NULL);
+    return (end.tv_sec - start.tv_sec) + 1.0e-6 * (end.tv_usec - start.tv_usec);
+}
 
 // -----------------------------------GLOBAL VARS--------------------------------
 int blks;
@@ -101,30 +116,42 @@ void cleanup_spgemm()
  */
 sparse_CSR_t spgemm(const sparse_CSR_t &A, const sparse_CSR_t &B)
 {
+    double init_time = read_timer();
     init_spgemm(A, B);
-
     // Fill the final result with all 0s
     thrust::device_ptr<double> d_result_ptr(d_result);
     thrust::fill(d_result_ptr, d_result_ptr + num_entries, 0);
-
     double *cpu_A_vals = new double[A.values.size()];
     cudaMemcpy(cpu_A_vals, d_A_values, sizeof(double) * A.values.size(), cudaMemcpyDeviceToHost);
+    init_time = read_timer() - init_time;
+    printf("Initialization Time= %g seconds\n", init_time);
 
+    double computation_time = read_timer();
     // Parallelize the matrix multiplication across all the threads
     spgemm_kernel<<<blks, NUM_THREADS>>>(d_A_row_ptrs, d_A_col_indices, d_A_values,
                                          d_B_row_ptrs, d_B_col_indices, d_B_values,
                                          d_result, A.rows, B.cols);
+    computation_time = read_timer() - computation_time;
+    printf("Computation Time in Kernel = %g seconds\n", computation_time);
 
     // Copy the device result to host
     // Return a sparse mat representation from there
 
+    double result_time = read_timer();
+
     double *result_cpu = new double[num_entries];
-
     cudaMemcpy(result_cpu, d_result, sizeof(double) * num_entries, cudaMemcpyDeviceToHost);
-
     sparse_CSR_t sparse_result = convert_to_sparse_CSR(A.rows, B.cols, result_cpu);
 
+    result_time = read_timer() - result_time;
+    printf("Writing Result Time = %g seconds\n", result_time);
+
+    double cleanup_time = read_timer();
+
     cleanup_spgemm();
+
+    cleanup_time = read_timer() - cleanup_time;
+    printf("Cleanup Time = %g seconds\n", cleanup_time);
 
     return sparse_result;
 }

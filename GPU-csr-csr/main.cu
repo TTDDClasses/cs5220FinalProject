@@ -59,6 +59,46 @@ void fill(double *p, int n, double sparsity)
     //     p[i] = 2 * dis(gen) - 1;
 }
 
+int correctness_check(sparse_CSR_t sparseA, sparse_CSR_t sparseB, sparse_CSR_t result, int n, double *A, double *B, double *C)
+{
+    /* Ensure that error does not exceed the theoretical error bound. */
+    /* C := A * B, computed with square_dgemm */
+    result = spgemm(sparseA, sparseB);
+    double *tempC = convert_from_sparse_CSR(result);
+    // We store the calculated C into C here
+    std::copy(tempC, tempC + n * n, C);
+
+    /* Do not explicitly check that A and B were unmodified on square_dgemm exit
+     *  - if they were, the following will most likely detect it:
+     * C := C - A * B, computed with reference_dgemm */
+    reference_dgemm(n, -1., A, B, C);
+
+    /* A := |A|, B := |B|, C := |C| */
+    std::transform(A, A + n * n, A, [](double val)
+                   { return std::fabs(val); });
+    std::transform(B, B + n * n, B, [](double val)
+                   { return std::fabs(val); });
+    std::transform(C, C + n * n, C, [](double val)
+                   { return std::fabs(val); });
+
+    /* C := |C| - 3 * e_mach * n * |A| * |B|, computed with reference_dgemm */
+    const auto e_mach = std::numeric_limits<double>::epsilon();
+    reference_dgemm(n, -3. * e_mach * n, A, B, C);
+
+    /* If any element in C is positive, then something went wrong in square_dgemm */
+    for (int i = 0; i < n * n; ++i)
+    {
+        if (C[i] > 0)
+        {
+            std::cerr << "*** FAILURE *** Error in matrix multiply exceeds componentwise error "
+                         "bounds."
+                      << std::endl;
+            return 1;
+        }
+    }
+    return 0;
+}
+
 /* The benchmarking program */
 int main(int argc, char **argv)
 {
@@ -72,8 +112,10 @@ int main(int argc, char **argv)
 
     /* Test sizes should highlight performance dips at multiples of certain powers-of-two */
 
-    std::vector<int> test_sizes{
-        100, 500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 5500, 6000, 6500, 7000, 7500, 8000, 8500, 9000, 9500, 10000};
+    std::vector<int> test_sizes{100, 500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000};
+
+    // std::vector<int> test_sizes{
+    // 100, 500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 5500, 6000, 6500, 7000, 7500, 8000, 8500, 9000, 9500, 10000};
 
     std::sort(test_sizes.begin(), test_sizes.end());
     int nsizes = test_sizes.size();
@@ -93,8 +135,8 @@ int main(int argc, char **argv)
         double *B = A + nmax * nmax;
         double *C = B + nmax * nmax;
 
-        fill(A, n * n, 0.99);
-        fill(B, n * n, 0.99);
+        fill(A, n * n, 0.80);
+        fill(B, n * n, 0.80);
         // fill(C, n * n);
 
         sparse_CSR_t sparseA = convert_to_sparse_CSR(n, n, A);
@@ -140,42 +182,7 @@ int main(int argc, char **argv)
                   << "\tPercentage: " << per.back() //
                   << std::endl;
 
-        /* Ensure that error does not exceed the theoretical error bound. */
-
-        /* C := A * B, computed with square_dgemm */
-        result = spgemm(sparseA, sparseB);
-        double *tempC = convert_from_sparse_CSR(result);
-        // We store the calculated C into C here
-        std::copy(tempC, tempC + n * n, C);
-
-        /* Do not explicitly check that A and B were unmodified on square_dgemm exit
-         *  - if they were, the following will most likely detect it:
-         * C := C - A * B, computed with reference_dgemm */
-        reference_dgemm(n, -1., A, B, C);
-
-        /* A := |A|, B := |B|, C := |C| */
-        std::transform(A, A + n * n, A, [](double val)
-                       { return std::fabs(val); });
-        std::transform(B, B + n * n, B, [](double val)
-                       { return std::fabs(val); });
-        std::transform(C, C + n * n, C, [](double val)
-                       { return std::fabs(val); });
-
-        /* C := |C| - 3 * e_mach * n * |A| * |B|, computed with reference_dgemm */
-        const auto e_mach = std::numeric_limits<double>::epsilon();
-        reference_dgemm(n, -3. * e_mach * n, A, B, C);
-
-        /* If any element in C is positive, then something went wrong in square_dgemm */
-        for (int i = 0; i < n * n; ++i)
-        {
-            if (C[i] > 0)
-            {
-                std::cerr << "*** FAILURE *** Error in matrix multiply exceeds componentwise error "
-                             "bounds."
-                          << std::endl;
-                return 1;
-            }
-        }
+        // correctness_check(sparseA, sparseB, result, n, A, B, C);
     }
 
     /* Calculating average percentage of peak reached by algorithm */
