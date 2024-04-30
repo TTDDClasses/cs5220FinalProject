@@ -1,16 +1,14 @@
 #include "common.h"
 
-const char *spgemm_desc = "Naive SpGEMM";
+const char *spgemm_desc = "csr_csc";
 
 /*
- * This routine performs a dgemm operation
- * C := A * B
- * where A, B, and C are lda-by-lda matrices stored in column-major format.
- * On exit, A and B maintain their input values.
+ * This routine performs an SpGEMM operation C := A * B
+ * A is CSR and B is CRC and the output is a CSR
  */
-sparse_mat_t spgemm(const sparse_mat_t &A, const sparse_mat_t &B)
+sparse_CSR_t spgemm(const sparse_CSR_t &A, const sparse_CSC_t &B)
 {
-    sparse_mat_t result;
+    sparse_CSR_t result;
 
     result.rows = A.rows;
     result.cols = B.cols;
@@ -29,13 +27,14 @@ sparse_mat_t spgemm(const sparse_mat_t &A, const sparse_mat_t &B)
                 int col_idx = A.col_indices[k];
                 double A_val = A.values[k];
                 // Get the corresponding elt in jth col of B
-                for (int l = B.row_ptrs[col_idx]; l < B.row_ptrs[col_idx + 1]; ++l)
+                for (int l = B.col_ptrs[j]; l < B.col_ptrs[j + 1]; ++l)
                 {
-                    if (B.col_indices[l] == j)
+                    // We still need this check to make sure the indices are correct
+                    if (B.row_indices[l] == col_idx)
                     {
                         double B_val = B.values[l];
                         dot_prod += A_val * B_val;
-                        // we can break the loop because the column indicies are sorted
+                        // we can break the loop because the row indicies are sorted
                         break;
                     }
                 }

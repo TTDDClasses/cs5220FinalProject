@@ -10,17 +10,13 @@
 
 #include <cblas.h>
 
-// #ifndef ALL_SIZES
-// #define ALL_SIZES 0
-// #endif
-
 #ifndef MAX_SPEED
 #define MAX_SPEED 56
 #endif
 
 /* Your function must have the following signature: */
 extern const char *spgemm_desc;
-extern sparse_mat_t spgemm(const sparse_mat_t &, const sparse_mat_t &);
+extern sparse_CSR_t spgemm(const sparse_CSR_t &, const sparse_CSC_t &);
 
 void reference_dgemm(int n, double alpha, double *A, double *B, double *C)
 {
@@ -48,9 +44,6 @@ void fill(double *p, int n, double sparsity)
         } while (p[index] != 0.0); // Make sure we're not overwriting existing non-zero value
         p[index] = 2 * dis(gen) - 1;
     }
-
-    // for (int i = 0; i < n; ++i)
-    //     p[i] = 2 * dis(gen) - 1;
 }
 
 /* The benchmarking program */
@@ -63,15 +56,10 @@ int main(int argc, char **argv)
 
     /* Test sizes should highlight performance dips at multiples of certain powers-of-two */
 
-#ifdef ALL_SIZES
-    /* Multiples-of-32, +/- 1. */
-    std::vector<int> test_sizes{
-        100, 500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 5500, 6000, 6500, 7000, 7500, 8000, 8500, 9000, 9500, 10000};
-#else
     /* A representative subset of the first list. */
+    // std::vector<int> test_sizes{2};
     // std::vector<int> test_sizes{2, 4, 8, 12, 16};
     std::vector<int> test_sizes{100, 500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 5500, 6000, 6500, 7000, 7500, 8000, 8500, 9000, 9500, 10000};
-#endif
 
     std::sort(test_sizes.begin(), test_sizes.end());
     int nsizes = test_sizes.size();
@@ -91,22 +79,13 @@ int main(int argc, char **argv)
         double *B = A + nmax * nmax;
         double *C = B + nmax * nmax;
 
-        fill(A, n * n, 0.99);
-        fill(B, n * n, 0.99);
-        // fill(C, n * n);
+        fill(A, n * n, 0);
+        fill(B, n * n, 0);
 
-        // sparse_mat_t sparseA = convert_to_sparse(n, n, A);
-        // sparse_mat_t sparseB = convert_to_sparse(n, n, B);
-        // sparse_mat_t result;
-        double *spResult;
-
-        // printf("printing arrays\n");
-        // printDoubleArray(A, n * n);
-        // printDoubleArray(B, n * n);
-
-        // printf("printing sparse mat\n");
-        // print_sparse_matrix(sparseA);
-        // print_sparse_matrix(sparseB);
+        sparse_CSR_t sparseA_CSR = convert_to_sparse_CSR(n, n, A);
+        sparse_CSC_t sparseB_CSC = convert_to_sparse_CSC(n, n, B);
+        sparse_CSR_t result;
+        double *spResult = new double[n * n];
 
         /* Measure performance (in Gflops/s). */
         /* Time a "sufficiently long" sequence of calls to reduce noise */
@@ -119,13 +98,16 @@ int main(int argc, char **argv)
             iteration_count++;
             /* Warm-up */
             // Need to convert A and B to sparse first
-            reference_dgemm(n, 1, A, B, C);
+            // use a switch case to change btw CSR and CSC
+
+            result = spgemm(sparseA_CSR, sparseB_CSC);
 
             /* Benchmark n_iterations runs of square_dgemm */
             auto start = std::chrono::steady_clock::now();
             for (int it = 0; it < n_iterations; ++it)
             {
-                reference_dgemm(n, 1, A, B, C);
+                // reference_dgemm(n, 1, A, B, C);
+                result = spgemm(sparseA_CSR, sparseB_CSC);
             }
             auto end = std::chrono::steady_clock::now();
             std::chrono::duration<double> diff = end - start;
@@ -152,55 +134,35 @@ int main(int argc, char **argv)
         /* C := A * B, computed with square_dgemm */
         // std::fill(C, &C[n * n], 0.0);
         // spgemm(n, A, B, C);
-        // result = spgemm(sparseA, sparseB);
-        // double *tempC = convert_from_sparse(result);
-        // std::copy(tempC, tempC + n * n, C);
+        result = spgemm(sparseA_CSR, sparseB_CSC);
+        double *tempC = convert_from_sparse_CSR(result);
+        std::copy(tempC, tempC + n * n, C);
 
-        // /* Do not explicitly check that A and B were unmodified on square_dgemm exit
-        //  *  - if they were, the following will most likely detect it:
-        //  * C := C - A * B, computed with reference_dgemm */
-        // reference_dgemm(n, -1., A, B, C);
+        /* Do not explicitly check that A and B were unmodified on square_dgemm exit
+         *  - if they were, the following will most likely detect it:
+         * C := C - A * B, computed with reference_dgemm */
+        reference_dgemm(n, -1., A, B, C);
 
-        // // printf("The expected C multiplication\n");
-        // // printDoubleArray(A, n * n);
-        // // printDoubleArray(B, n * n);
-        // // printDoubleArray(C, n * n);
+        /* A := |A|, B := |B|, C := |C| */
+        std::transform(A, &A[n * n], A, fabs);
+        std::transform(B, &B[n * n], B, fabs);
+        std::transform(C, &C[n * n], C, fabs);
 
-        // // result = spgemm(sparseA, sparseB);
-        // // printf("----------------\n");
-        // // print_sparse_matrix(sparseA);
-        // // printf("----------------\n");
-        // // print_sparse_matrix(sparseB);
-        // // printf("----------------\n");
-        // // print_sparse_matrix(result);
-        // // printf("The actual C  multiplication\n");
-        // // C = convert_from_sparse(result);
-        // // printDoubleArray(C, n * n);
+        /* C := |C| - 3 * e_mach * n * |A| * |B|, computed with reference_dgemm */
+        const auto e_mach = std::numeric_limits<double>::epsilon();
+        reference_dgemm(n, -3. * e_mach * n, A, B, C);
 
-        // // printf("Converting sparse A bcakt o normal \n");
-        // // double *test = convert_from_sparse(sparseA);
-        // // printDoubleArray(test, n * n);
-
-        // /* A := |A|, B := |B|, C := |C| */
-        // std::transform(A, &A[n * n], A, fabs);
-        // std::transform(B, &B[n * n], B, fabs);
-        // std::transform(C, &C[n * n], C, fabs);
-
-        // /* C := |C| - 3 * e_mach * n * |A| * |B|, computed with reference_dgemm */
-        // const auto e_mach = std::numeric_limits<double>::epsilon();
-        // reference_dgemm(n, -3. * e_mach * n, A, B, C);
-
-        // /* If any element in C is positive, then something went wrong in square_dgemm */
-        // for (int i = 0; i < n * n; ++i)
-        // {
-        //     if (C[i] > 0)
-        //     {
-        //         std::cerr << "*** FAILURE *** Error in matrix multiply exceeds componentwise error "
-        //                      "bounds."
-        //                   << std::endl;
-        //         return 1;
-        //     }
-        // }
+        /* If any element in C is positive, then something went wrong in square_dgemm */
+        for (int i = 0; i < n * n; ++i)
+        {
+            if (C[i] > 0)
+            {
+                std::cerr << "*** FAILURE *** Error in matrix multiply exceeds componentwise error "
+                             "bounds."
+                          << std::endl;
+                return 1;
+            }
+        }
     }
 
     /* Calculating average percentage of peak reached by algorithm */
@@ -215,29 +177,4 @@ int main(int argc, char **argv)
     std::cout << "Average percentage of Peak = " << aveper << std::endl;
 
     return 0;
-
-    // ------------------------------------SPARSE MATRIX MULTIPLICATION-----------------------
-    // For testing purposes, we will just generate a sparse matrix multiplication representation
-    // And then output the result as a sparse matrix, we will verify with other information
-
-    // Test matrix conversion
-    // double values[] = {8.0, 0.0, 2.0, 0.0, 0.0, 0.0, 0.0, 5.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 7.0, 1.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 9.0, 0.0};
-    // sparse_mat_t test = convert_to_sparse(7, 5, values);
-    // print_sparse_matrix(test);
-
-    // double mat1[] = {1.0, 0.0, 0.0, 0.0, 0.0, 3.0};
-    // double mat2[] = {1.0, 2.0, 0.0, 0.0, 0.0, 4.0};
-
-    // sparse_mat_t s1 = convert_to_sparse(2, 3, mat1);
-    // sparse_mat_t s2 = convert_to_sparse(3, 2, mat2);
-    // sparse_mat_t result = spgemm(s1, s2);
-
-    // printf("s1 \n");
-    // print_sparse_matrix(s1);
-
-    // printf("s2 \n");
-    // print_sparse_matrix(s2);
-
-    // printf("result \n");
-    // print_sparse_matrix(result);
 }
