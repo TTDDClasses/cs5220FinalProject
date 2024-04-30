@@ -156,7 +156,7 @@ inline double *convert_from_sparse_CSC(const sparse_CSC_t &sparse)
     // We note that we don't need to loop through the entire matrix, only the nonzero elts
     for (int j = 0; j < sparse.col_ptrs.size() - 1; ++j)
     {
-        for (int i = sparse.col_ptrs[i]; i < sparse.col_ptrs[j + 1]; ++i)
+        for (int i = sparse.col_ptrs[j]; i < sparse.col_ptrs[j + 1]; ++i)
         {
             int row_idx = sparse.row_indices[i];
             double val = sparse.values[i];

@@ -16,8 +16,8 @@ if (NOT "${CMAKE_C_COMPILER_ID}" STREQUAL "GNU")
             "module swap ${Prg-${CMAKE_C_COMPILER_ID}} PrgEnv-gnu")
 endif ()
 
-add_executable(blas main.cpp blas.cpp common.h)
-add_executable(sparse main.cpp csr_csr.cpp common.h)
+add_executable(blas main.cpp blas.cpp)
+add_executable(sparse main.cpp csr_csr.cpp)
 # we need another one for GPU
 
 # Copy the job scripts
