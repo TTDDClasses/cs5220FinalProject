@@ -1,0 +1,45 @@
+Description:    Naive SpGEMM
+
+Timing: 0.03
+Size: 100       Mflops/s: 48452.26      Percentage: 86.52
+Timing: 0.05
+Size: 500       Mflops/s: 52546.87      Percentage: 93.83
+Timing: 0.13
+Size: 1000      Mflops/s: 53222.96      Percentage: 95.04
+Timing: 0.25
+Size: 1500      Mflops/s: 53773.41      Percentage: 96.02
+Timing: 0.60
+Size: 2000      Mflops/s: 53760.33      Percentage: 96.00
+Timing: 1.17
+Size: 2500      Mflops/s: 53444.01      Percentage: 95.44
+Timing: 2.01
+Size: 3000      Mflops/s: 53868.23      Percentage: 96.19
+Timing: 3.20
+Size: 3500      Mflops/s: 53764.32      Percentage: 96.01
+Timing: 4.74
+Size: 4000      Mflops/s: 53963.94      Percentage: 96.36
+Timing: 6.78
+Size: 4500      Mflops/s: 53780.75      Percentage: 96.04
+Timing: 9.30
+Size: 5000      Mflops/s: 53807.26      Percentage: 96.08
+Timing: 12.35
+Size: 5500      Mflops/s: 53877.67      Percentage: 96.21
+Timing: 16.01
+Size: 6000      Mflops/s: 53922.55      Percentage: 96.29
+Timing: 20.34
+Size: 6500      Mflops/s: 53988.72      Percentage: 96.41
+Timing: 25.45
+Size: 7000      Mflops/s: 53971.93      Percentage: 96.38
+Timing: 31.35
+Size: 7500      Mflops/s: 53818.44      Percentage: 96.10
+Timing: 37.95
+Size: 8000      Mflops/s: 53968.84      Percentage: 96.37
+Timing: 45.47
+Size: 8500      Mflops/s: 54035.70      Percentage: 96.49
+Timing: 54.02
+Size: 9000      Mflops/s: 53974.52      Percentage: 96.38
+Timing: 63.41
+Size: 9500      Mflops/s: 54160.26      Percentage: 96.71
+Timing: 74.00
+Size: 10000     Mflops/s: 54057.36      Percentage: 96.53
+Average percentage of Peak = 95.59

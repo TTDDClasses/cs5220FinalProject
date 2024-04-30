@@ -1,0 +1,43 @@
+Timing: 0.18
+Size: 100       Mflops/s: 6738.24       Percentage: 12.03
+Timing: 0.06
+Size: 500       Mflops/s: 140660.79     Percentage: 251.18
+Timing: 0.05
+Size: 1000      Mflops/s: 479187.78     Percentage: 855.69
+Timing: 0.08
+Size: 1500      Mflops/s: 674069.89     Percentage: 1203.70
+Timing: 0.10
+Size: 2000      Mflops/s: 822804.89     Percentage: 1469.29
+Timing: 0.12
+Size: 2500      Mflops/s: 888249.85     Percentage: 1586.16
+Timing: 0.15
+Size: 3000      Mflops/s: 890919.07     Percentage: 1590.93
+Timing: 0.22
+Size: 3500      Mflops/s: 961518.08     Percentage: 1717.00
+Timing: 0.26
+Size: 4000      Mflops/s: 966843.83     Percentage: 1726.51
+Timing: 0.34
+Size: 4500      Mflops/s: 1071192.59    Percentage: 1912.84
+Timing: 0.49
+Size: 5000      Mflops/s: 1017677.64    Percentage: 1817.28
+Timing: 0.62
+Size: 5500      Mflops/s: 1024648.32    Percentage: 1829.73
+Timing: 0.74
+Size: 6000      Mflops/s: 1222566.73    Percentage: 2183.15
+Timing: 0.92
+Size: 6500      Mflops/s: 1216584.94    Percentage: 2172.47
+Timing: 1.10
+Size: 7000      Mflops/s: 1268024.42    Percentage: 2264.33
+Timing: 1.29
+Size: 7500      Mflops/s: 1300575.27    Percentage: 2322.46
+Timing: 1.58
+Size: 8000      Mflops/s: 1287889.03    Percentage: 2299.80
+Timing: 1.84
+Size: 8500      Mflops/s: 1318666.45    Percentage: 2354.76
+Timing: 2.14
+Size: 9000      Mflops/s: 1382199.86    Percentage: 2468.21
+Timing: 2.44
+Size: 9500      Mflops/s: 1392260.48    Percentage: 2486.18
+Timing: 2.77
+Size: 10000     Mflops/s: 1440633.72    Percentage: 2572.56
+Average percentage of Peak = 1766.49
