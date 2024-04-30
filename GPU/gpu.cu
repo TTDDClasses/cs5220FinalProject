@@ -4,7 +4,7 @@
 #include <thrust/scan.h>
 #include <thrust/device_vector.h>
 
-#define NUM_THREADS 128
+#define NUM_THREADS 1024
 
 const char *spgemm_desc = "GPU SpGEMM";
 

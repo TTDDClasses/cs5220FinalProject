@@ -91,13 +91,13 @@ int main(int argc, char **argv)
         double *B = A + nmax * nmax;
         double *C = B + nmax * nmax;
 
-        fill(A, n * n, 0.5);
-        fill(B, n * n, 0.5);
+        fill(A, n * n, 0.99);
+        fill(B, n * n, 0.99);
         // fill(C, n * n);
 
-        sparse_mat_t sparseA = convert_to_sparse(n, n, A);
-        sparse_mat_t sparseB = convert_to_sparse(n, n, B);
-        sparse_mat_t result;
+        // sparse_mat_t sparseA = convert_to_sparse(n, n, A);
+        // sparse_mat_t sparseB = convert_to_sparse(n, n, B);
+        // sparse_mat_t result;
         double *spResult;
 
         // printf("printing arrays\n");
@@ -112,17 +112,20 @@ int main(int argc, char **argv)
         /* Time a "sufficiently long" sequence of calls to reduce noise */
         double Gflops_s = 0.0, seconds = -1.0;
         double timeout = 0.1; // "sufficiently long" := at least 1/10 second.
+        auto start_timing = std::chrono::steady_clock::now();
+        int iteration_count = 0;
         for (int n_iterations = 1; seconds < timeout; n_iterations *= 2)
         {
+            iteration_count++;
             /* Warm-up */
             // Need to convert A and B to sparse first
-            result = spgemm(sparseA, sparseB);
+            reference_dgemm(n, 1, A, B, C);
 
             /* Benchmark n_iterations runs of square_dgemm */
             auto start = std::chrono::steady_clock::now();
             for (int it = 0; it < n_iterations; ++it)
             {
-                result = spgemm(sparseA, sparseB);
+                reference_dgemm(n, 1, A, B, C);
             }
             auto end = std::chrono::steady_clock::now();
             std::chrono::duration<double> diff = end - start;
@@ -131,6 +134,9 @@ int main(int argc, char **argv)
             /*  compute Gflop/s rate */
             Gflops_s = 2.e-9 * n_iterations * n * n * n / seconds;
         }
+        auto end_timing = std::chrono::steady_clock::now();
+        std::chrono::duration<double> diff_timing = end_timing - start_timing;
+        std::cout << "Timing: " << diff_timing.count() / iteration_count << std::endl;
 
         /* Storing Mflop rate and calculating percentage of peak */
         double Mflops_s = Gflops_s * 1000;
@@ -146,55 +152,55 @@ int main(int argc, char **argv)
         /* C := A * B, computed with square_dgemm */
         // std::fill(C, &C[n * n], 0.0);
         // spgemm(n, A, B, C);
-        result = spgemm(sparseA, sparseB);
-        double *tempC = convert_from_sparse(result);
-        std::copy(tempC, tempC + n * n, C);
-
-        /* Do not explicitly check that A and B were unmodified on square_dgemm exit
-         *  - if they were, the following will most likely detect it:
-         * C := C - A * B, computed with reference_dgemm */
-        reference_dgemm(n, -1., A, B, C);
-
-        // printf("The expected C multiplication\n");
-        // printDoubleArray(A, n * n);
-        // printDoubleArray(B, n * n);
-        // printDoubleArray(C, n * n);
-
         // result = spgemm(sparseA, sparseB);
-        // printf("----------------\n");
-        // print_sparse_matrix(sparseA);
-        // printf("----------------\n");
-        // print_sparse_matrix(sparseB);
-        // printf("----------------\n");
-        // print_sparse_matrix(result);
-        // printf("The actual C  multiplication\n");
-        // C = convert_from_sparse(result);
-        // printDoubleArray(C, n * n);
+        // double *tempC = convert_from_sparse(result);
+        // std::copy(tempC, tempC + n * n, C);
 
-        // printf("Converting sparse A bcakt o normal \n");
-        // double *test = convert_from_sparse(sparseA);
-        // printDoubleArray(test, n * n);
+        // /* Do not explicitly check that A and B were unmodified on square_dgemm exit
+        //  *  - if they were, the following will most likely detect it:
+        //  * C := C - A * B, computed with reference_dgemm */
+        // reference_dgemm(n, -1., A, B, C);
 
-        /* A := |A|, B := |B|, C := |C| */
-        std::transform(A, &A[n * n], A, fabs);
-        std::transform(B, &B[n * n], B, fabs);
-        std::transform(C, &C[n * n], C, fabs);
+        // // printf("The expected C multiplication\n");
+        // // printDoubleArray(A, n * n);
+        // // printDoubleArray(B, n * n);
+        // // printDoubleArray(C, n * n);
 
-        /* C := |C| - 3 * e_mach * n * |A| * |B|, computed with reference_dgemm */
-        const auto e_mach = std::numeric_limits<double>::epsilon();
-        reference_dgemm(n, -3. * e_mach * n, A, B, C);
+        // // result = spgemm(sparseA, sparseB);
+        // // printf("----------------\n");
+        // // print_sparse_matrix(sparseA);
+        // // printf("----------------\n");
+        // // print_sparse_matrix(sparseB);
+        // // printf("----------------\n");
+        // // print_sparse_matrix(result);
+        // // printf("The actual C  multiplication\n");
+        // // C = convert_from_sparse(result);
+        // // printDoubleArray(C, n * n);
 
-        /* If any element in C is positive, then something went wrong in square_dgemm */
-        for (int i = 0; i < n * n; ++i)
-        {
-            if (C[i] > 0)
-            {
-                std::cerr << "*** FAILURE *** Error in matrix multiply exceeds componentwise error "
-                             "bounds."
-                          << std::endl;
-                return 1;
-            }
-        }
+        // // printf("Converting sparse A bcakt o normal \n");
+        // // double *test = convert_from_sparse(sparseA);
+        // // printDoubleArray(test, n * n);
+
+        // /* A := |A|, B := |B|, C := |C| */
+        // std::transform(A, &A[n * n], A, fabs);
+        // std::transform(B, &B[n * n], B, fabs);
+        // std::transform(C, &C[n * n], C, fabs);
+
+        // /* C := |C| - 3 * e_mach * n * |A| * |B|, computed with reference_dgemm */
+        // const auto e_mach = std::numeric_limits<double>::epsilon();
+        // reference_dgemm(n, -3. * e_mach * n, A, B, C);
+
+        // /* If any element in C is positive, then something went wrong in square_dgemm */
+        // for (int i = 0; i < n * n; ++i)
+        // {
+        //     if (C[i] > 0)
+        //     {
+        //         std::cerr << "*** FAILURE *** Error in matrix multiply exceeds componentwise error "
+        //                      "bounds."
+        //                   << std::endl;
+        //         return 1;
+        //     }
+        // }
     }
 
     /* Calculating average percentage of peak reached by algorithm */

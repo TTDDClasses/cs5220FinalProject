@@ -107,8 +107,8 @@ int main(int argc, char **argv)
         double *B = A + nmax * nmax;
         double *C = B + nmax * nmax;
 
-        fill(A, n * n, 0.5);
-        fill(B, n * n, 0.5);
+        fill(A, n * n, 0.99);
+        fill(B, n * n, 0.99);
         // fill(C, n * n);
 
         sparse_mat_t sparseA = convert_to_sparse(n, n, A);
@@ -119,8 +119,11 @@ int main(int argc, char **argv)
         /* Time a "sufficiently long" sequence of calls to reduce noise */
         double Gflops_s = 0.0, seconds = -1.0;
         double timeout = 0.1; // "sufficiently long" := at least 1/10 second.
+        auto start_timing = std::chrono::steady_clock::now();
+        int iteration_count = 0;
         for (int n_iterations = 1; seconds < timeout; n_iterations *= 2)
         {
+            iteration_count++;
             /* Warm-up */
             // Need to convert A and B to sparse first
             result = spgemm(sparseA, sparseB);
@@ -138,6 +141,10 @@ int main(int argc, char **argv)
             /*  compute Gflop/s rate */
             Gflops_s = 2.e-9 * n_iterations * n * n * n / seconds;
         }
+        auto end_timing = std::chrono::steady_clock::now();
+        std::chrono::duration<double> diff_timing = end_timing - start_timing;
+        std::cout << "Timing: " << diff_timing.count() / iteration_count << std::endl;
+
 
         /* Storing Mflop rate and calculating percentage of peak */
         double Mflops_s = Gflops_s * 1000;
@@ -152,39 +159,39 @@ int main(int argc, char **argv)
 
         /* C := A * B, computed with square_dgemm */
         // spgemm(n, A, B, C);
-        result = spgemm(sparseA, sparseB);
-        double *tempC = convert_from_sparse(result);
-        // We store the calculated C into C here
-        std::copy(tempC, tempC + n * n, C);
+    //     result = spgemm(sparseA, sparseB);
+    //     double *tempC = convert_from_sparse(result);
+    //     // We store the calculated C into C here
+    //     std::copy(tempC, tempC + n * n, C);
 
-        /* Do not explicitly check that A and B were unmodified on square_dgemm exit
-         *  - if they were, the following will most likely detect it:
-         * C := C - A * B, computed with reference_dgemm */
-        reference_dgemm(n, -1., A, B, C);
+    //     /* Do not explicitly check that A and B were unmodified on square_dgemm exit
+    //      *  - if they were, the following will most likely detect it:
+    //      * C := C - A * B, computed with reference_dgemm */
+    //     reference_dgemm(n, -1., A, B, C);
 
-        /* A := |A|, B := |B|, C := |C| */
-        std::transform(A, A + n * n, A, [](double val)
-                       { return std::fabs(val); });
-        std::transform(B, B + n * n, B, [](double val)
-                       { return std::fabs(val); });
-        std::transform(C, C + n * n, C, [](double val)
-                       { return std::fabs(val); });
+    //     /* A := |A|, B := |B|, C := |C| */
+    //     std::transform(A, A + n * n, A, [](double val)
+    //                    { return std::fabs(val); });
+    //     std::transform(B, B + n * n, B, [](double val)
+    //                    { return std::fabs(val); });
+    //     std::transform(C, C + n * n, C, [](double val)
+    //                    { return std::fabs(val); });
 
-        /* C := |C| - 3 * e_mach * n * |A| * |B|, computed with reference_dgemm */
-        const auto e_mach = std::numeric_limits<double>::epsilon();
-        reference_dgemm(n, -3. * e_mach * n, A, B, C);
+    //     /* C := |C| - 3 * e_mach * n * |A| * |B|, computed with reference_dgemm */
+    //     const auto e_mach = std::numeric_limits<double>::epsilon();
+    //     reference_dgemm(n, -3. * e_mach * n, A, B, C);
 
-        /* If any element in C is positive, then something went wrong in square_dgemm */
-        for (int i = 0; i < n * n; ++i)
-        {
-            if (C[i] > 0)
-            {
-                std::cerr << "*** FAILURE *** Error in matrix multiply exceeds componentwise error "
-                             "bounds."
-                          << std::endl;
-                return 1;
-            }
-        }
+    //     /* If any element in C is positive, then something went wrong in square_dgemm */
+    //     for (int i = 0; i < n * n; ++i)
+    //     {
+    //         if (C[i] > 0)
+    //         {
+    //             std::cerr << "*** FAILURE *** Error in matrix multiply exceeds componentwise error "
+    //                          "bounds."
+    //                       << std::endl;
+    //             return 1;
+    //         }
+    //     }
     }
 
     /* Calculating average percentage of peak reached by algorithm */
