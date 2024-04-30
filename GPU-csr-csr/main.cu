@@ -8,20 +8,30 @@
 
 #include <cmath> // For: fabs
 
-#include <cblas.h>
-
 #ifndef MAX_SPEED
 #define MAX_SPEED 56
 #endif
 
 /* Your function must have the following signature: */
 extern const char *spgemm_desc;
-extern sparse_CSR_t spgemm(const sparse_CSR_t &, const sparse_CSC_t &);
+extern sparse_CSR_t spgemm(const sparse_CSR_t &, const sparse_CSR_t &);
 
 void reference_dgemm(int n, double alpha, double *A, double *B, double *C)
 {
-    // Note that we need to change to row major order
-    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, n, n, n, alpha, A, n, B, n, 1., C, n);
+    for (int i = 0; i < n; ++i)
+    {
+        // For each column j of B
+        for (int j = 0; j < n; ++j)
+        {
+            // Compute C(i,j)
+            double cij = C[i * n + j];
+            for (int k = 0; k < n; k++)
+            {
+                cij += alpha * A[i * n + k] * B[k * n + j];
+            }
+            C[i * n + j] = cij;
+        }
+    }
 }
 
 void fill(double *p, int n, double sparsity)
@@ -30,7 +40,7 @@ void fill(double *p, int n, double sparsity)
     static std::default_random_engine gen(rd());
     static std::uniform_real_distribution<> dis(-1.0, 1.0);
 
-    int nonZeroCount = static_cast<int>(n * (1 - sparsity));
+    int nonZeroCount = static_cast<int>((n * (1 - sparsity)));
 
     // Fill everything with 0
     std::fill(p, p + n, 0);
@@ -44,11 +54,17 @@ void fill(double *p, int n, double sparsity)
         } while (p[index] != 0.0); // Make sure we're not overwriting existing non-zero value
         p[index] = 2 * dis(gen) - 1;
     }
+
+    // for (int i = 0; i < n; ++i)
+    //     p[i] = 2 * dis(gen) - 1;
 }
 
 /* The benchmarking program */
 int main(int argc, char **argv)
 {
+    /* Initialize cublas */
+    // cublasCreate(&handle);
+
     std::cout << "Description:\t" << spgemm_desc << std::endl
               << std::endl;
 
@@ -56,10 +72,8 @@ int main(int argc, char **argv)
 
     /* Test sizes should highlight performance dips at multiples of certain powers-of-two */
 
-    /* A representative subset of the first list. */
-    // std::vector<int> test_sizes{2};
-    // std::vector<int> test_sizes{2, 4, 8, 12, 16};
-    std::vector<int> test_sizes{100, 500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 5500, 6000, 6500, 7000, 7500, 8000, 8500, 9000, 9500, 10000};
+    std::vector<int> test_sizes{
+        100, 500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 5500, 6000, 6500, 7000, 7500, 8000, 8500, 9000, 9500, 10000};
 
     std::sort(test_sizes.begin(), test_sizes.end());
     int nsizes = test_sizes.size();
@@ -79,13 +93,13 @@ int main(int argc, char **argv)
         double *B = A + nmax * nmax;
         double *C = B + nmax * nmax;
 
-        fill(A, n * n, 0);
-        fill(B, n * n, 0);
+        fill(A, n * n, 0.99);
+        fill(B, n * n, 0.99);
+        // fill(C, n * n);
 
-        sparse_CSR_t sparseA_CSR = convert_to_sparse_CSR(n, n, A);
-        sparse_CSC_t sparseB_CSC = convert_to_sparse_CSC(n, n, B);
+        sparse_CSR_t sparseA = convert_to_sparse_CSR(n, n, A);
+        sparse_CSR_t sparseB = convert_to_sparse_CSR(n, n, B);
         sparse_CSR_t result;
-        double *spResult = new double[n * n];
 
         /* Measure performance (in Gflops/s). */
         /* Time a "sufficiently long" sequence of calls to reduce noise */
@@ -98,16 +112,13 @@ int main(int argc, char **argv)
             iteration_count++;
             /* Warm-up */
             // Need to convert A and B to sparse first
-            // use a switch case to change btw CSR and CSC
-
-            result = spgemm(sparseA_CSR, sparseB_CSC);
+            result = spgemm(sparseA, sparseB);
 
             /* Benchmark n_iterations runs of square_dgemm */
             auto start = std::chrono::steady_clock::now();
             for (int it = 0; it < n_iterations; ++it)
             {
-                // reference_dgemm(n, 1, A, B, C);
-                result = spgemm(sparseA_CSR, sparseB_CSC);
+                result = spgemm(sparseA, sparseB);
             }
             auto end = std::chrono::steady_clock::now();
             std::chrono::duration<double> diff = end - start;
@@ -132,10 +143,9 @@ int main(int argc, char **argv)
         /* Ensure that error does not exceed the theoretical error bound. */
 
         /* C := A * B, computed with square_dgemm */
-        // std::fill(C, &C[n * n], 0.0);
-        // spgemm(n, A, B, C);
-        result = spgemm(sparseA_CSR, sparseB_CSC);
+        result = spgemm(sparseA, sparseB);
         double *tempC = convert_from_sparse_CSR(result);
+        // We store the calculated C into C here
         std::copy(tempC, tempC + n * n, C);
 
         /* Do not explicitly check that A and B were unmodified on square_dgemm exit
@@ -144,9 +154,12 @@ int main(int argc, char **argv)
         reference_dgemm(n, -1., A, B, C);
 
         /* A := |A|, B := |B|, C := |C| */
-        std::transform(A, &A[n * n], A, fabs);
-        std::transform(B, &B[n * n], B, fabs);
-        std::transform(C, &C[n * n], C, fabs);
+        std::transform(A, A + n * n, A, [](double val)
+                       { return std::fabs(val); });
+        std::transform(B, B + n * n, B, [](double val)
+                       { return std::fabs(val); });
+        std::transform(C, C + n * n, C, [](double val)
+                       { return std::fabs(val); });
 
         /* C := |C| - 3 * e_mach * n * |A| * |B|, computed with reference_dgemm */
         const auto e_mach = std::numeric_limits<double>::epsilon();

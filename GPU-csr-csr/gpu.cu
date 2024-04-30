@@ -1,4 +1,4 @@
-#include "common.h"
+#include "../common.h"
 #include <cuda.h>
 #include <iostream>
 #include <thrust/scan.h>
@@ -6,7 +6,7 @@
 
 #define NUM_THREADS 1024
 
-const char *spgemm_desc = "GPU SpGEMM";
+const char *spgemm_desc = "GPU CSR-CSR SpGEMM";
 
 // -----------------------------------GLOBAL VARS--------------------------------
 int blks;
@@ -58,7 +58,7 @@ __global__ void spgemm_kernel(int *d_A_row_ptrs, int *d_A_col_indices, double *d
 
 // -----------------------------------HOST FUNCTIONS--------------------------
 
-void init_spgemm(const sparse_mat_t &A, const sparse_mat_t &B)
+void init_spgemm(const sparse_CSR_t &A, const sparse_CSR_t &B)
 {
     num_entries = A.rows * B.cols;
     // The final matrix is of size rows and cols
@@ -99,7 +99,7 @@ void cleanup_spgemm()
  * where A, B, and C are lda-by-lda matrices stored in column-major format.
  * On exit, A and B maintain their input values.
  */
-sparse_mat_t spgemm(const sparse_mat_t &A, const sparse_mat_t &B)
+sparse_CSR_t spgemm(const sparse_CSR_t &A, const sparse_CSR_t &B)
 {
     init_spgemm(A, B);
 
@@ -121,7 +121,7 @@ sparse_mat_t spgemm(const sparse_mat_t &A, const sparse_mat_t &B)
     double *result_cpu = new double[num_entries];
 
     cudaMemcpy(result_cpu, d_result, sizeof(double) * num_entries, cudaMemcpyDeviceToHost);
-    sparse_mat_t sparse_result = convert_to_sparse(A.rows, B.cols, result_cpu);
+    sparse_CSR_t sparse_result = convert_to_sparse_CSR(A.rows, B.cols, result_cpu);
 
     cleanup_spgemm();
 

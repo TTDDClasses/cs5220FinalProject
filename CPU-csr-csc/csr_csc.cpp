@@ -1,4 +1,4 @@
-#include "common.h"
+#include "../common.h"
 
 const char *spgemm_desc = "csr_csc";
 

@@ -1,4 +1,4 @@
-#include "common.h"
+#include "../common.h"
 #include <algorithm>
 #include <chrono>
 #include <iomanip>
@@ -87,14 +87,6 @@ int main(int argc, char **argv)
         sparse_CSR_t result;
         double *spResult;
 
-        // printf("printing arrays\n");
-        // printDoubleArray(A, n * n);
-        // printDoubleArray(B, n * n);
-
-        // printf("printing sparse mat\n");
-        // print_sparse_matrix(sparseA_CSR);
-        // print_sparse_matrix(sparseB_CSR);
-
         /* Measure performance (in Gflops/s). */
         /* Time a "sufficiently long" sequence of calls to reduce noise */
         double Gflops_s = 0.0, seconds = -1.0;
@@ -108,15 +100,16 @@ int main(int argc, char **argv)
             // Need to convert A and B to sparse first
 
             // use a switch case to change btw CSR and CSC
+            reference_dgemm(n, 1, A, B, C);
 
-            result = spgemm(sparseA_CSR, sparseB_CSR);
+            // result = spgemm(sparseA_CSR, sparseB_CSR);
 
             /* Benchmark n_iterations runs of square_dgemm */
             auto start = std::chrono::steady_clock::now();
             for (int it = 0; it < n_iterations; ++it)
             {
                 // reference_dgemm(n, 1, A, B, C);
-                result = spgemm(sparseA_CSR, sparseB_CSR);
+                // result = spgemm(sparseA_CSR, sparseB_CSR);
             }
             auto end = std::chrono::steady_clock::now();
             std::chrono::duration<double> diff = end - start;
